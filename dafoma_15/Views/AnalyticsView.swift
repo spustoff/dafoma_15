@@ -1,0 +1,448 @@
+import SwiftUI
+
+struct AnalyticsView: View {
+    @EnvironmentObject var userPreferences: UserPreferencesViewModel
+    @StateObject private var tripViewModel = TripViewModel()
+    
+    var body: some View {
+        NavigationView {
+            ZStack {
+                Color(hex: "#3e4464").ignoresSafeArea()
+                
+                ScrollView {
+                    VStack(spacing: 24) {
+                        // Header
+                        AnalyticsHeader(user: userPreferences.user)
+                        
+                        // Level Progress
+                        LevelProgressSection(user: userPreferences.user)
+                        
+                        // Travel Stats
+                        TravelStatsSection(user: userPreferences.user)
+                        
+                        // Badges Gallery
+                        BadgesSection(user: userPreferences.user)
+                        
+                        // Recent Achievements
+                        RecentAchievements(trips: tripViewModel.trips)
+                        
+                        Spacer(minLength: 100)
+                    }
+                    .padding(.horizontal, 20)
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("My Journey")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(.white)
+                }
+            }
+        }
+    }
+}
+
+struct AnalyticsHeader: View {
+    let user: User
+    
+    var body: some View {
+        VStack(spacing: 16) {
+            // Profile Picture or Initial
+            ZStack {
+                Circle()
+                    .fill(Color(hex: "#fcc418"))
+                    .frame(width: 80, height: 80)
+                
+                if let imageName = user.profileImageName {
+                    Image(imageName)
+                        .resizable()
+                        .clipShape(Circle())
+                        .frame(width: 80, height: 80)
+                } else {
+                    Text(String(user.name.prefix(1)).uppercased())
+                        .font(.system(size: 32, weight: .bold))
+                        .foregroundColor(Color(hex: "#3e4464"))
+                }
+            }
+            
+            Text(user.name.isEmpty ? "Explorer" : user.name)
+                .font(.system(size: 24, weight: .bold))
+                .foregroundColor(.white)
+            
+            Text("Level \(user.travelStats.level) Traveler")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(Color(hex: "#fcc418"))
+        }
+        .padding(.top, 20)
+    }
+}
+
+struct LevelProgressSection: View {
+    let user: User
+    
+    var levelProgress: (current: Int, progress: Double, pointsToNext: Int) {
+        let level = user.travelStats.level
+        let progress = user.travelStats.progressToNextLevel
+        let pointsToNext = Int((1.0 - progress) * 100)
+        return (level, progress, pointsToNext)
+    }
+    
+    var body: some View {
+        VStack(spacing: 16) {
+            HStack {
+                Text("Progress to Level \(levelProgress.current + 1)")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.white)
+                
+                Spacer()
+                
+                Text("\(levelProgress.pointsToNext) points to go")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(Color(hex: "#fcc418"))
+            }
+            
+            // Progress Bar
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color.white.opacity(0.2))
+                        .frame(height: 20)
+                    
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(
+                            LinearGradient(
+                                colors: [Color(hex: "#fcc418"), Color(hex: "#3cc45b")],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(width: geometry.size.width * levelProgress.progress, height: 20)
+                        .animation(.easeInOut(duration: 1.0), value: levelProgress.progress)
+                    
+                    HStack {
+                        Text("\(user.travelStats.totalPoints) points")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(Color(hex: "#3e4464"))
+                            .padding(.leading, 8)
+                        
+                        Spacer()
+                    }
+                }
+            }
+            .frame(height: 20)
+        }
+        .padding(20)
+        .background(Color.white.opacity(0.1))
+        .cornerRadius(16)
+    }
+}
+
+struct TravelStatsSection: View {
+    let user: User
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Travel Statistics")
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundColor(.white)
+            
+            LazyVGrid(columns: [
+                GridItem(.flexible()),
+                GridItem(.flexible())
+            ], spacing: 16) {
+                StatCard(
+                    icon: "airplane.departure",
+                    title: "Trips",
+                    value: "\(user.travelStats.totalTrips)",
+                    color: Color(hex: "#fcc418")
+                )
+                
+                StatCard(
+                    icon: "mappin.and.ellipse",
+                    title: "Places Visited",
+                    value: "\(user.travelStats.totalPlacesVisited)",
+                    color: Color(hex: "#3cc45b")
+                )
+                
+                StatCard(
+                    icon: "globe",
+                    title: "Countries",
+                    value: "\(user.travelStats.countriesVisited.count)",
+                    color: Color(hex: "#fcc418")
+                )
+                
+                StatCard(
+                    icon: "calendar",
+                    title: "Longest Trip",
+                    value: "\(user.travelStats.longestTrip) days",
+                    color: Color(hex: "#3cc45b")
+                )
+            }
+            
+            if user.travelStats.totalDistanceTraveled > 0 {
+                DistanceCard(distance: user.travelStats.totalDistanceTraveled)
+                    .padding(.top, 8)
+            }
+        }
+        .padding(20)
+        .background(Color.white.opacity(0.1))
+        .cornerRadius(16)
+    }
+}
+
+struct StatCard: View {
+    let icon: String
+    let title: String
+    let value: String
+    let color: Color
+    
+    var body: some View {
+        VStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 28))
+                .foregroundColor(color)
+            
+            Text(value)
+                .font(.system(size: 24, weight: .bold))
+                .foregroundColor(.white)
+            
+            Text(title)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.white.opacity(0.8))
+                .multilineTextAlignment(.center)
+        }
+        .frame(height: 120)
+        .frame(maxWidth: .infinity)
+        .background(Color.white.opacity(0.1))
+        .cornerRadius(12)
+    }
+}
+
+struct DistanceCard: View {
+    let distance: Double
+    
+    var formattedDistance: String {
+        if distance < 1000 {
+            return String(format: "%.0f km", distance)
+        } else {
+            return String(format: "%.1f K km", distance / 1000)
+        }
+    }
+    
+    var body: some View {
+        HStack(spacing: 16) {
+            Image(systemName: "location.circle.fill")
+                .font(.system(size: 32))
+                .foregroundColor(Color(hex: "#fcc418"))
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Total Distance")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.white.opacity(0.8))
+                
+                Text(formattedDistance)
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(.white)
+            }
+            
+            Spacer()
+            
+            Text("Traveled")
+                .font(.system(size: 12))
+                .foregroundColor(.white.opacity(0.6))
+        }
+        .padding(16)
+        .background(Color.white.opacity(0.1))
+        .cornerRadius(12)
+    }
+}
+
+struct BadgesSection: View {
+    let user: User
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("Earned Badges")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(.white)
+                
+                Spacer()
+                
+                Text("\(user.travelStats.badgesEarned.count)")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(Color(hex: "#fcc418"))
+            }
+            
+            if user.travelStats.badgesEarned.isEmpty {
+                EmptyBadgesView()
+            } else {
+                LazyVGrid(columns: [
+                    GridItem(.flexible()),
+                    GridItem(.flexible()),
+                    GridItem(.flexible())
+                ], spacing: 16) {
+                    ForEach(user.travelStats.badgesEarned.prefix(6), id: \.id) { badge in
+                        BadgeView(badge: badge)
+                    }
+                }
+                
+                if user.travelStats.badgesEarned.count > 6 {
+                    Button("View All Badges") {
+                        // Show all badges
+                    }
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(Color(hex: "#fcc418"))
+                    .padding(.top, 8)
+                }
+            }
+        }
+        .padding(20)
+        .background(Color.white.opacity(0.1))
+        .cornerRadius(16)
+    }
+}
+
+struct BadgeView: View {
+    let badge: TravelBadge
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(systemName: badge.iconName)
+                .font(.system(size: 24))
+                .foregroundColor(Color(hex: "#fcc418"))
+            
+            Text(badge.name)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundColor(.white)
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+        }
+        .frame(height: 80)
+        .frame(maxWidth: .infinity)
+        .background(Color.white.opacity(0.1))
+        .cornerRadius(10)
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Color(hex: "#fcc418").opacity(0.3), lineWidth: 1)
+        )
+    }
+}
+
+struct EmptyBadgesView: View {
+    var body: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "rosette")
+                .font(.system(size: 32))
+                .foregroundColor(.white.opacity(0.6))
+            
+            Text("No badges earned yet")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(.white)
+            
+            Text("Visit places and complete trips to earn your first badge!")
+                .font(.system(size: 12))
+                .foregroundColor(.white.opacity(0.7))
+                .multilineTextAlignment(.center)
+        }
+        .padding(.vertical, 24)
+    }
+}
+
+struct RecentAchievements: View {
+    let trips: [Trip]
+    
+    var recentTrips: [Trip] {
+        return trips.filter { $0.isCompleted || !$0.visitedPOIs.isEmpty }
+            .sorted { $0.startDate > $1.startDate }
+            .prefix(3)
+            .map { $0 }
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Recent Achievements")
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundColor(.white)
+            
+            if recentTrips.isEmpty {
+                EmptyAchievementsView()
+            } else {
+                ForEach(recentTrips, id: \.id) { trip in
+                    AchievementCard(trip: trip)
+                }
+            }
+        }
+        .padding(20)
+        .background(Color.white.opacity(0.1))
+        .cornerRadius(16)
+    }
+}
+
+struct AchievementCard: View {
+    let trip: Trip
+    
+    var body: some View {
+        HStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .fill(trip.isCompleted ? Color(hex: "#3cc45b") : Color(hex: "#fcc418"))
+                    .frame(width: 40, height: 40)
+                
+                Image(systemName: trip.isCompleted ? "checkmark.circle.fill" : "star.fill")
+                    .font(.system(size: 20))
+                    .foregroundColor(.white)
+            }
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(trip.isCompleted ? "Completed Trip" : "Trip Progress")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.white.opacity(0.8))
+                
+                Text(trip.name)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.white)
+                    .lineLimit(1)
+                
+                Text("\(trip.visitedPOIs.count) places visited • \(trip.earnedPoints) points")
+                    .font(.system(size: 12))
+                    .foregroundColor(.white.opacity(0.6))
+            }
+            
+            Spacer()
+            
+            Text(DateFormatter.shortDate.string(from: trip.startDate))
+                .font(.system(size: 10))
+                .foregroundColor(.white.opacity(0.6))
+        }
+        .padding(12)
+        .background(Color.white.opacity(0.05))
+        .cornerRadius(10)
+    }
+}
+
+struct EmptyAchievementsView: View {
+    var body: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "trophy")
+                .font(.system(size: 32))
+                .foregroundColor(.white.opacity(0.6))
+            
+            Text("No recent achievements")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(.white)
+            
+            Text("Start your first trip to see achievements here")
+                .font(.system(size: 12))
+                .foregroundColor(.white.opacity(0.7))
+                .multilineTextAlignment(.center)
+        }
+        .padding(.vertical, 24)
+    }
+}
+
+#Preview {
+    AnalyticsView()
+        .environmentObject(UserPreferencesViewModel())
+} 
