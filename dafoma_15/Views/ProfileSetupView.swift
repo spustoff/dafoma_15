@@ -442,16 +442,7 @@ struct NavigationButtons: View {
     }
 }
 
-struct CustomTextFieldStyle: TextFieldStyle {
-    func _body(configuration: TextField<Self._Label>) -> some View {
-        configuration
-            .padding(16)
-            .background(Color.white.opacity(0.1))
-            .cornerRadius(12)
-            .foregroundColor(.white)
-            .font(.system(size: 16))
-    }
-}
+
 
 #Preview {
     ProfileSetupView()

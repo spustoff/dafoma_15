@@ -7,6 +7,7 @@ class LocationService: NSObject, ObservableObject {
     @Published var authorizationStatus: CLAuthorizationStatus = .notDetermined
     @Published var isLocationEnabled = false
     @Published var errorMessage: String?
+    @Published var isLoadingNearbyPOIs = false
     
     private let locationManager = CLLocationManager()
     
@@ -22,16 +23,19 @@ class LocationService: NSObject, ObservableObject {
     }
     
     func requestLocationPermission() {
-        switch authorizationStatus {
-        case .notDetermined:
-            locationManager.requestWhenInUseAuthorization()
-        case .denied, .restricted:
-            // Guide user to settings
-            errorMessage = "Location access is required for navigation features. Please enable in Settings."
-        case .authorizedWhenInUse, .authorizedAlways:
-            startLocationUpdates()
-        @unknown default:
-            break
+        DispatchQueue.main.async {
+            switch self.authorizationStatus {
+            case .notDetermined:
+                self.locationManager.requestWhenInUseAuthorization()
+            case .denied, .restricted:
+                // Guide user to settings
+                self.errorMessage = "Location access is required for navigation features. Please enable in Settings."
+            case .authorizedWhenInUse, .authorizedAlways:
+                self.startLocationUpdates()
+            @unknown default:
+                // Handle future authorization statuses
+                self.errorMessage = "Unknown location authorization status. Please check your settings."
+            }
         }
     }
     
@@ -64,18 +68,71 @@ class LocationService: NSObject, ObservableObject {
     
     // MARK: - POI Discovery
     
+    func getNearbyPOIs(radius: Double = 5.0, completion: @escaping ([POI]) -> Void) {
+        guard let currentLocation = currentLocation else { 
+            DispatchQueue.main.async {
+                self.errorMessage = "Location not available. Please ensure location services are enabled."
+                completion([])
+            }
+            return 
+        }
+        
+        DispatchQueue.main.async {
+            self.isLoadingNearbyPOIs = true
+            self.errorMessage = nil
+        }
+        
+        // Simulate API call with delay and timeout handling
+        DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 1.5) {
+            let mockPOIs = self.generateMockPOIs(around: currentLocation.coordinate, radius: radius)
+            
+            DispatchQueue.main.async {
+                self.isLoadingNearbyPOIs = false
+                if mockPOIs.isEmpty {
+                    self.errorMessage = "No nearby places found. Try adjusting your location or radius."
+                }
+                completion(mockPOIs)
+            }
+        }
+    }
+    
+    // Legacy synchronous method for backward compatibility
     func getNearbyPOIs(radius: Double = 5.0) -> [POI] {
         guard let currentLocation = currentLocation else { return [] }
-        
-        // Mock POI data - in real app would use MapKit or Google Places API
         return generateMockPOIs(around: currentLocation.coordinate, radius: radius)
     }
     
+    func searchPOIs(query: String, location: CLLocationCoordinate2D? = nil, completion: @escaping ([POI]) -> Void) {
+        let searchLocation = location ?? currentLocation?.coordinate
+        guard let searchLocation = searchLocation else { 
+            completion([])
+            return 
+        }
+        
+        isLoadingNearbyPOIs = true
+        errorMessage = nil
+        
+        // Simulate API search with delay
+        DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 1.0) {
+            let allPOIs = self.generateMockPOIs(around: searchLocation, radius: 10.0)
+            let filteredPOIs = allPOIs.filter { poi in
+                poi.name.localizedCaseInsensitiveContains(query) ||
+                poi.description.localizedCaseInsensitiveContains(query) ||
+                poi.category.rawValue.localizedCaseInsensitiveContains(query)
+            }
+            
+            DispatchQueue.main.async {
+                self.isLoadingNearbyPOIs = false
+                completion(filteredPOIs)
+            }
+        }
+    }
+    
+    // Legacy synchronous method for backward compatibility
     func searchPOIs(query: String, location: CLLocationCoordinate2D? = nil) -> [POI] {
         let searchLocation = location ?? currentLocation?.coordinate
         guard let searchLocation = searchLocation else { return [] }
         
-        // Mock search results - in real app would use search API
         return generateMockPOIs(around: searchLocation, radius: 10.0)
             .filter { poi in
                 poi.name.localizedCaseInsensitiveContains(query) ||

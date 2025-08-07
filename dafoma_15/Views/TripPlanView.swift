@@ -11,6 +11,7 @@ struct TripPlanView: View {
     @State private var searchText = ""
     @State private var nearbyPOIs: [POI] = []
     @State private var searchResults: [POI] = []
+    @State private var isSearching = false
     
     var body: some View {
         NavigationView {
@@ -49,13 +50,17 @@ struct TripPlanView: View {
                             if !searchText.isEmpty {
                                 POISearchResults(
                                     searchResults: searchResults,
+                                    isLoading: isSearching,
                                     onPOISelected: addPOIToCurrentTrip
                                 )
                                 .padding(.horizontal, 20)
                             } else {
                                 NearbyPOIsSection(
                                     nearbyPOIs: nearbyPOIs,
-                                    onPOISelected: addPOIToCurrentTrip
+                                    isLoading: locationService.isLoadingNearbyPOIs,
+                                    onPOISelected: addPOIToCurrentTrip,
+                                    locationService: locationService,
+                                    loadNearbyPOIs: loadNearbyPOIs
                                 )
                                 .padding(.horizontal, 20)
                             }
@@ -84,14 +89,23 @@ struct TripPlanView: View {
     
     private func performSearch() {
         if !searchText.isEmpty {
-            searchResults = locationService.searchPOIs(query: searchText)
+            isSearching = true
+            locationService.searchPOIs(query: searchText) { results in
+                searchResults = results
+                isSearching = false
+            }
         } else {
             searchResults = []
+            isSearching = false
         }
     }
     
     private func loadNearbyPOIs() {
-        nearbyPOIs = locationService.getNearbyPOIs()
+        guard locationService.currentLocation != nil else { return }
+        
+        locationService.getNearbyPOIs { results in
+            nearbyPOIs = results
+        }
     }
     
     private func addPOIToCurrentTrip(_ poi: POI) {
@@ -366,7 +380,10 @@ struct EmptyTripsView: View {
 
 struct NearbyPOIsSection: View {
     let nearbyPOIs: [POI]
+    let isLoading: Bool
     let onPOISelected: (POI) -> Void
+    let locationService: LocationService
+    let loadNearbyPOIs: () -> Void
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -374,8 +391,15 @@ struct NearbyPOIsSection: View {
                 .font(.system(size: 20, weight: .semibold))
                 .foregroundColor(.white)
             
-            if nearbyPOIs.isEmpty {
+            if isLoading {
                 POILoadingView()
+            } else if let errorMessage = locationService.errorMessage {
+                POIErrorView(errorMessage: errorMessage) {
+                    locationService.requestLocationPermission()
+                    loadNearbyPOIs()
+                }
+            } else if nearbyPOIs.isEmpty {
+                POIEmptyView()
             } else {
                 ForEach(nearbyPOIs.prefix(5), id: \.id) { poi in
                     POIRowView(poi: poi, showDistance: true)
@@ -399,6 +423,7 @@ struct NearbyPOIsSection: View {
 
 struct POISearchResults: View {
     let searchResults: [POI]
+    let isLoading: Bool
     let onPOISelected: (POI) -> Void
     
     var body: some View {
@@ -407,7 +432,9 @@ struct POISearchResults: View {
                 .font(.system(size: 20, weight: .semibold))
                 .foregroundColor(.white)
             
-            if searchResults.isEmpty {
+            if isLoading {
+                POILoadingView()
+            } else if searchResults.isEmpty {
                 Text("No results found")
                     .font(.system(size: 16))
                     .foregroundColor(.white.opacity(0.6))
@@ -484,6 +511,8 @@ struct POIRowView: View {
                 Image(systemName: "plus.circle.fill")
                     .font(.system(size: 24))
                     .foregroundColor(Color(hex: "#3cc45b"))
+                    .accessibilityLabel("Add \(poi.name) to trip")
+                    .accessibilityHint("Double tap to add this place to your current trip")
             }
         }
         .padding(12)
@@ -501,6 +530,59 @@ struct POILoadingView: View {
             Text("Discovering nearby places...")
                 .font(.system(size: 14))
                 .foregroundColor(.white.opacity(0.8))
+        }
+        .padding(.vertical, 32)
+    }
+}
+
+struct POIEmptyView: View {
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "location.slash")
+                .font(.system(size: 40))
+                .foregroundColor(.white.opacity(0.6))
+            
+            Text("No nearby places found")
+                .font(.system(size: 18, weight: .medium))
+                .foregroundColor(.white)
+            
+            Text("Make sure location services are enabled and try again")
+                .font(.system(size: 14))
+                .foregroundColor(.white.opacity(0.8))
+                .multilineTextAlignment(.center)
+        }
+        .padding(.vertical, 32)
+    }
+}
+
+struct POIErrorView: View {
+    let errorMessage: String
+    let onRetry: () -> Void
+    
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: 40))
+                .foregroundColor(.orange)
+            
+            Text("Something went wrong")
+                .font(.system(size: 18, weight: .medium))
+                .foregroundColor(.white)
+            
+            Text(errorMessage)
+                .font(.system(size: 14))
+                .foregroundColor(.white.opacity(0.8))
+                .multilineTextAlignment(.center)
+            
+            Button("Try Again") {
+                onRetry()
+            }
+            .font(.system(size: 14, weight: .medium))
+            .foregroundColor(Color(hex: "#3e4464"))
+            .padding(.horizontal, 20)
+            .padding(.vertical, 8)
+            .background(Color(hex: "#fcc418"))
+            .cornerRadius(20)
         }
         .padding(.vertical, 32)
     }

@@ -7,6 +7,9 @@ struct TripDetailView: View {
     
     @State private var showingItinerary = true
     @State private var selectedPOI: POI?
+    @State private var showingEditSheet = false
+    @State private var showingShareSheet = false
+    @State private var showingCalendarExport = false
     
     var body: some View {
         NavigationView {
@@ -42,23 +45,23 @@ struct TripDetailView: View {
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
+                ToolbarItemGroup(placement: .navigationBarLeading) {
                     Button("Done") {
                         dismiss()
                     }
                     .foregroundColor(.white)
                 }
                 
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
                     Menu {
                         Button("Edit Trip") {
-                            // Edit functionality
+                            showingEditSheet = true
                         }
                         Button("Share Itinerary") {
-                            // Share functionality
+                            showingShareSheet = true
                         }
                         Button("Export to Calendar") {
-                            // Calendar export
+                            showingCalendarExport = true
                         }
                     } label: {
                         Image(systemName: "ellipsis.circle")
@@ -70,6 +73,26 @@ struct TripDetailView: View {
         .sheet(item: $selectedPOI) { poi in
             POIDetailView(poi: poi, trip: trip, tripViewModel: tripViewModel)
         }
+        .sheet(isPresented: $showingEditSheet) {
+            EditTripSheet(trip: trip, tripViewModel: tripViewModel)
+        }
+        .sheet(isPresented: $showingShareSheet) {
+            ShareItineraryView(trip: trip)
+        }
+        .alert("Export to Calendar", isPresented: $showingCalendarExport) {
+            Button("Export") {
+                exportToCalendar()
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Add this trip to your calendar?")
+        }
+    }
+    
+    private func exportToCalendar() {
+        // Placeholder for calendar export functionality
+        // In a real app, you would use EventKit framework to add events
+        print("Exporting trip '\(trip.name)' to calendar")
     }
 }
 
@@ -482,6 +505,143 @@ struct SummaryRow: View {
             Text(value)
                 .font(.system(size: 16, weight: .medium))
                 .foregroundColor(.white)
+        }
+    }
+}
+
+struct EditTripSheet: View {
+    let trip: Trip
+    @ObservedObject var tripViewModel: TripViewModel
+    @Environment(\.dismiss) private var dismiss
+    
+    @State private var name: String
+    @State private var destination: String
+    @State private var description: String
+    @State private var startDate: Date
+    @State private var endDate: Date
+    
+    init(trip: Trip, tripViewModel: TripViewModel) {
+        self.trip = trip
+        self.tripViewModel = tripViewModel
+        self._name = State(initialValue: trip.name)
+        self._destination = State(initialValue: trip.destination)
+        self._description = State(initialValue: trip.description)
+        self._startDate = State(initialValue: trip.startDate)
+        self._endDate = State(initialValue: trip.endDate)
+    }
+    
+    var body: some View {
+        NavigationView {
+            ZStack {
+                Color(hex: "#3e4464").ignoresSafeArea()
+                
+                Form {
+                    Section("Trip Details") {
+                        TextField("Trip Name", text: $name)
+                        TextField("Destination", text: $destination)
+                        TextField("Description", text: $description)
+                    }
+                    
+                    Section("Dates") {
+                        DatePicker("Start Date", selection: $startDate, displayedComponents: .date)
+                        DatePicker("End Date", selection: $endDate, displayedComponents: .date)
+                    }
+                }
+            }
+            .navigationTitle("Edit Trip")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+    }
+    
+    private func saveChanges() {
+        var updatedTrip = trip
+        updatedTrip.name = name
+        updatedTrip.destination = destination
+        updatedTrip.description = description
+        updatedTrip.startDate = startDate
+        updatedTrip.endDate = endDate
+        
+        tripViewModel.updateTrip(updatedTrip)
+    }
+}
+
+struct ShareItineraryView: View {
+    let trip: Trip
+    @Environment(\.dismiss) private var dismiss
+    
+    var itineraryText: String {
+        var text = "🗺️ \(trip.name)\n"
+        text += "📍 \(trip.destination)\n"
+        text += "📅 \(DateFormatter.shortDate.string(from: trip.startDate)) - \(DateFormatter.shortDate.string(from: trip.endDate))\n\n"
+        
+        if let itinerary = trip.itinerary, !itinerary.pointsOfInterest.isEmpty {
+            text += "📋 Itinerary:\n"
+            for (index, poi) in itinerary.pointsOfInterest.enumerated() {
+                text += "\(index + 1). \(poi.name) - \(poi.category.rawValue)\n"
+            }
+        }
+        
+        return text
+    }
+    
+    var body: some View {
+        NavigationView {
+            ZStack {
+                Color(hex: "#3e4464").ignoresSafeArea()
+                
+                VStack(spacing: 20) {
+                    Text("Share Itinerary")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(.white)
+                        .padding(.top, 20)
+                    
+                    ScrollView {
+                        Text(itineraryText)
+                            .font(.system(size: 14))
+                            .foregroundColor(.white)
+                            .padding(16)
+                            .background(Color.white.opacity(0.1))
+                            .cornerRadius(12)
+                            .padding(.horizontal, 20)
+                    }
+                    
+                    Button(action: {
+                        shareItinerary(itineraryText)
+                    }) {
+                        HStack {
+                            Image(systemName: "square.and.arrow.up")
+                            Text("Share Itinerary")
+                        }
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(Color(hex: "#3e4464"))
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 12)
+                        .background(Color(hex: "#fcc418"))
+                        .cornerRadius(20)
+                    }
+                    
+                    Spacer()
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .foregroundColor(.white)
+                }
+            }
+        }
+    }
+    
+    private func shareItinerary(_ text: String) {
+        let activityViewController = UIActivityViewController(activityItems: [text], applicationActivities: nil)
+        
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let rootViewController = windowScene.windows.first?.rootViewController {
+            activityViewController.popoverPresentationController?.sourceView = rootViewController.view
+            rootViewController.present(activityViewController, animated: true)
         }
     }
 }
