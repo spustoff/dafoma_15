@@ -8,7 +8,6 @@ struct TripDetailView: View {
     @State private var showingItinerary = true
     @State private var selectedPOI: POI?
     @State private var showingEditSheet = false
-    @State private var showingShareSheet = false
     @State private var showingCalendarExport = false
     
     var body: some View {
@@ -57,9 +56,6 @@ struct TripDetailView: View {
                         Button("Edit Trip") {
                             showingEditSheet = true
                         }
-                        Button("Share Itinerary") {
-                            showingShareSheet = true
-                        }
                         Button("Export to Calendar") {
                             showingCalendarExport = true
                         }
@@ -75,9 +71,6 @@ struct TripDetailView: View {
         }
         .sheet(isPresented: $showingEditSheet) {
             EditTripSheet(trip: trip, tripViewModel: tripViewModel)
-        }
-        .sheet(isPresented: $showingShareSheet) {
-            ShareItineraryView(trip: trip)
         }
         .alert("Export to Calendar", isPresented: $showingCalendarExport) {
             Button("Export") {
@@ -565,86 +558,7 @@ struct EditTripSheet: View {
     }
 }
 
-struct ShareItineraryView: View {
-    let trip: Trip
-    @Environment(\.dismiss) private var dismiss
-    
-    var itineraryText: String {
-        var text = "🗺️ \(trip.name)\n"
-        text += "📍 \(trip.destination)\n"
-        text += "📅 \(DateFormatter.shortDate.string(from: trip.startDate)) - \(DateFormatter.shortDate.string(from: trip.endDate))\n\n"
-        
-        if let itinerary = trip.itinerary, !itinerary.pointsOfInterest.isEmpty {
-            text += "📋 Itinerary:\n"
-            for (index, poi) in itinerary.pointsOfInterest.enumerated() {
-                text += "\(index + 1). \(poi.name) - \(poi.category.rawValue)\n"
-            }
-        }
-        
-        return text
-    }
-    
-    var body: some View {
-        NavigationView {
-            ZStack {
-                Color(hex: "#3e4464").ignoresSafeArea()
-                
-                VStack(spacing: 20) {
-                    Text("Share Itinerary")
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundColor(.white)
-                        .padding(.top, 20)
-                    
-                    ScrollView {
-                        Text(itineraryText)
-                            .font(.system(size: 14))
-                            .foregroundColor(.white)
-                            .padding(16)
-                            .background(Color.white.opacity(0.1))
-                            .cornerRadius(12)
-                            .padding(.horizontal, 20)
-                    }
-                    
-                    Button(action: {
-                        shareItinerary(itineraryText)
-                    }) {
-                        HStack {
-                            Image(systemName: "square.and.arrow.up")
-                            Text("Share Itinerary")
-                        }
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(Color(hex: "#3e4464"))
-                        .padding(.horizontal, 24)
-                        .padding(.vertical, 12)
-                        .background(Color(hex: "#fcc418"))
-                        .cornerRadius(20)
-                    }
-                    
-                    Spacer()
-                }
-            }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItemGroup(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                    .foregroundColor(.white)
-                }
-            }
-        }
-    }
-    
-    private func shareItinerary(_ text: String) {
-        let activityViewController = UIActivityViewController(activityItems: [text], applicationActivities: nil)
-        
-        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-           let rootViewController = windowScene.windows.first?.rootViewController {
-            activityViewController.popoverPresentationController?.sourceView = rootViewController.view
-            rootViewController.present(activityViewController, animated: true)
-        }
-    }
-}
+
 
 #Preview {
     TripDetailView(trip: Trip(

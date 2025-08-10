@@ -387,14 +387,63 @@ struct NearbyPOIsSection: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Discover Nearby")
-                .font(.system(size: 20, weight: .semibold))
-                .foregroundColor(.white)
+            HStack {
+                Text("Discover Nearby")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(.white)
+                
+                Spacer()
+                
+                // Show location status indicator
+                if locationService.authorizationStatus == .denied || locationService.authorizationStatus == .restricted {
+                    Button(action: {
+                        locationService.requestLocationPermission()
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "location.slash")
+                            Text("Enable Location")
+                        }
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(Color(hex: "#3e4464"))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color(hex: "#fcc418"))
+                        .cornerRadius(12)
+                    }
+                } else if locationService.authorizationStatus == .notDetermined {
+                    Button(action: {
+                        locationService.requestLocationPermission()
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "location.circle")
+                            Text("Allow Location")
+                        }
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(Color(hex: "#3e4464"))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color(hex: "#fcc418"))
+                        .cornerRadius(12)
+                    }
+                } else if locationService.isLocationEnabled {
+                    HStack(spacing: 4) {
+                        Image(systemName: "location.fill")
+                        Text("Location On")
+                    }
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.green)
+                }
+            }
             
             if isLoading {
                 POILoadingView()
             } else if let errorMessage = locationService.errorMessage {
                 POIErrorView(errorMessage: errorMessage) {
+                    locationService.requestLocationPermission()
+                    loadNearbyPOIs()
+                }
+            } else if nearbyPOIs.isEmpty && locationService.currentLocation == nil {
+                LocationPermissionView {
                     locationService.requestLocationPermission()
                     loadNearbyPOIs()
                 }
@@ -585,6 +634,42 @@ struct POIErrorView: View {
             .cornerRadius(20)
         }
         .padding(.vertical, 32)
+    }
+}
+
+struct LocationPermissionView: View {
+    let onRequestPermission: () -> Void
+    
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "location.circle")
+                .font(.system(size: 50))
+                .foregroundColor(Color(hex: "#fcc418"))
+            
+            Text("Location Access Needed")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(.white)
+            
+            Text("To discover nearby places and enhance your travel experience, please allow location access.")
+                .font(.system(size: 14))
+                .foregroundColor(.white.opacity(0.8))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 20)
+            
+            Button("Allow Location Access") {
+                onRequestPermission()
+            }
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundColor(Color(hex: "#3e4464"))
+            .padding(.horizontal, 24)
+            .padding(.vertical, 12)
+            .background(Color(hex: "#fcc418"))
+            .cornerRadius(20)
+        }
+        .padding(.vertical, 40)
+        .padding(.horizontal, 20)
+        .background(Color.white.opacity(0.05))
+        .cornerRadius(16)
     }
 }
 
