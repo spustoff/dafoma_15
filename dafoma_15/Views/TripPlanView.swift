@@ -12,6 +12,7 @@ struct TripPlanView: View {
     @State private var nearbyPOIs: [POI] = []
     @State private var searchResults: [POI] = []
     @State private var isSearching = false
+    @State private var showingNoTripAlert = false
     
     var body: some View {
         NavigationView {
@@ -78,6 +79,14 @@ struct TripPlanView: View {
         .sheet(item: $selectedTrip) { trip in
             TripDetailView(trip: trip, tripViewModel: tripViewModel)
         }
+        .alert("Create a Trip First", isPresented: $showingNoTripAlert) {
+            Button("Create Trip") {
+                showingNewTripSheet = true
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("You need to create a trip before adding places to it.")
+        }
         .onAppear {
             locationService.requestLocationPermission()
             loadNearbyPOIs()
@@ -110,7 +119,7 @@ struct TripPlanView: View {
     
     private func addPOIToCurrentTrip(_ poi: POI) {
         guard let currentTrip = tripViewModel.currentTrip else {
-            // Show alert to select a trip first
+            showingNoTripAlert = true
             return
         }
         tripViewModel.addPOIToTrip(poi, to: currentTrip)
@@ -191,7 +200,7 @@ struct CurrentTripSection: View {
                         .foregroundColor(.white)
                     
                     ForEach(Array(itinerary.pointsOfInterest.prefix(3)), id: \.id) { poi in
-                        POIRowView(poi: poi, showDistance: false)
+                        POIRowView(poi: poi, showDistance: false, onPOISelected: nil)
                     }
                     
                     if itinerary.pointsOfInterest.count > 3 {
@@ -451,10 +460,7 @@ struct NearbyPOIsSection: View {
                 POIEmptyView()
             } else {
                 ForEach(nearbyPOIs.prefix(5), id: \.id) { poi in
-                    POIRowView(poi: poi, showDistance: true)
-                        .onTapGesture {
-                            onPOISelected(poi)
-                        }
+                    POIRowView(poi: poi, showDistance: true, onPOISelected: onPOISelected)
                 }
                 
                 if nearbyPOIs.count > 5 {
@@ -490,10 +496,7 @@ struct POISearchResults: View {
                     .padding(.vertical, 32)
             } else {
                 ForEach(searchResults, id: \.id) { poi in
-                    POIRowView(poi: poi, showDistance: true)
-                        .onTapGesture {
-                            onPOISelected(poi)
-                        }
+                    POIRowView(poi: poi, showDistance: true, onPOISelected: onPOISelected)
                 }
             }
         }
@@ -503,6 +506,7 @@ struct POISearchResults: View {
 struct POIRowView: View {
     let poi: POI
     let showDistance: Bool
+    let onPOISelected: ((POI) -> Void)?
     
     var body: some View {
         HStack(spacing: 12) {
@@ -556,7 +560,9 @@ struct POIRowView: View {
             Spacer()
             
             // Add Button
-            Button(action: {}) {
+            Button(action: {
+                onPOISelected?(poi)
+            }) {
                 Image(systemName: "plus.circle.fill")
                     .font(.system(size: 24))
                     .foregroundColor(Color(hex: "#3cc45b"))
