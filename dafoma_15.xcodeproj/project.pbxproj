@@ -254,7 +254,7 @@
 				DEVELOPMENT_ASSET_PATHS = "\"dafoma_15/Preview Content\"";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "VoyageCraft: Road";
+				INFOPLIST_KEY_CFBundleDisplayName = "Voyage Craft: Road";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "This app needs access to your location to discover nearby places and provide location-based features for your travel planning.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "This app needs access to your location to discover nearby places and provide location-based features for your travel planning.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -268,7 +268,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.2;
 				PRODUCT_BUNDLE_IDENTIFIER = "app.dafoma-15";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -291,7 +291,7 @@
 				DEVELOPMENT_ASSET_PATHS = "\"dafoma_15/Preview Content\"";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "VoyageCraft: Road";
+				INFOPLIST_KEY_CFBundleDisplayName = "Voyage Craft: Road";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "This app needs access to your location to discover nearby places and provide location-based features for your travel planning.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "This app needs access to your location to discover nearby places and provide location-based features for your travel planning.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -305,7 +305,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.2;
 				PRODUCT_BUNDLE_IDENTIFIER = "app.dafoma-15";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
